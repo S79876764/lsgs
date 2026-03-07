@@ -1,0 +1,7 @@
+[build]
+dockerfilePath = "Dockerfile.ws"
+
+[deploy]
+startCommand = "node ws-server.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

@@ -1,0 +1,13 @@
+{
+  "name": "lsgs-ws-server",
+  "version": "1.0.0",
+  "description": "LSGS WebSocket Chat Server",
+  "main": "ws-server.js",
+  "scripts": {
+    "start": "node ws-server.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.19.0",
+    "ws": "^8.19.0"
+  }
+}
