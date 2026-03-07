@@ -1,18 +1,17 @@
 FROM php:8.2-apache
 
-# Enable mysqli extension
+# Fix MPM conflict — disable event, enable prefork
+RUN a2dismod mpm_event || true \
+    && a2enmod mpm_prefork \
+    && a2enmod rewrite
+
+# Enable PHP extensions
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy all project files
 COPY . .
 
-# Create uploads directory and set permissions
 RUN mkdir -p /var/www/html/uploads/resources \
     && chown -R www-data:www-data /var/www/html/uploads \
     && chmod -R 755 /var/www/html/uploads
