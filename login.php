@@ -13,10 +13,13 @@ if (isset($_SESSION['user'])) {
 require_once __DIR__.'/db.php';
 
 // ── Migrations ───────────────────────────────────────────────
-@$conn->query("ALTER TABLE students ADD COLUMN  session_token VARCHAR(64) DEFAULT NULL");
-@$conn->query("ALTER TABLE students ADD COLUMN  last_active DATETIME DEFAULT NULL");
-@$conn->query("ALTER TABLE students ADD COLUMN  security_question VARCHAR(255) DEFAULT NULL");
-@$conn->query("ALTER TABLE students ADD COLUMN  security_answer VARCHAR(255) DEFAULT NULL");
+$migrations = [
+    "ALTER TABLE students ADD COLUMN session_token VARCHAR(64) DEFAULT NULL",
+    "ALTER TABLE students ADD COLUMN last_active DATETIME DEFAULT NULL",
+    "ALTER TABLE students ADD COLUMN security_question VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE students ADD COLUMN security_answer VARCHAR(255) DEFAULT NULL",
+];
+foreach ($migrations as $sql) { try { $conn->query($sql); } catch (Exception $e) {} }
 
 $error='';$tab=$_GET['tab']??'login';
 if (isset($_GET['kicked'])) $error = 'You were logged out because your account was signed in on another device.';

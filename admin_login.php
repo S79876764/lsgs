@@ -13,7 +13,13 @@ if (isset($_SESSION['user'])) {
 require_once __DIR__.'/db.php';
 
 // ── Single-device login: add session_token column if not exists ──
-$conn->query("ALTER TABLE admin ADD COLUMN IF NOT EXISTS session_token VARCHAR(64) DEFAULT NULL");
+$migrations_admin = [
+    "ALTER TABLE admin ADD COLUMN session_token VARCHAR(64) DEFAULT NULL",
+    "ALTER TABLE admin ADD COLUMN last_active DATETIME DEFAULT NULL",
+    "ALTER TABLE admin ADD COLUMN security_question VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE admin ADD COLUMN security_answer VARCHAR(255) DEFAULT NULL",
+];
+foreach ($migrations_admin as $sql) { try { $conn->query($sql); } catch (Exception $e) {} }
 
 $error='';
 
