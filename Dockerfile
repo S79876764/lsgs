@@ -1,21 +1,31 @@
-FROM php:8.2-apache
+FROM ubuntu:22.04
 
-# Fix MPM conflict — disable event, enable prefork
-RUN a2dismod mpm_event || true \
-    && a2enmod mpm_prefork \
-    && a2enmod rewrite
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Enable PHP extensions
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+RUN apt-get update && apt-get install -y \
+    apache2 \
+    php8.1 \
+    php8.1-mysqli \
+    php8.1-pdo \
+    php8.1-mysql \
+    libapache2-mod-php8.1 \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
+RUN rm -f /var/www/html/index.html
 
 COPY . .
 
 RUN mkdir -p /var/www/html/uploads/resources \
-    && chown -R www-data:www-data /var/www/html/uploads \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/uploads
+
+RUN echo '<Directory /var/www/html>\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' >> /etc/apache2/apache2.conf
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["apache2ctl", "-D", "FOREGROUND"]
