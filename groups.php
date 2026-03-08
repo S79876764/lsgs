@@ -26,16 +26,16 @@ $msg_type     = 'ok';
 $my_programme = $user['programme'] ?? '';
 
 // ── Safe migrations ───────────────────────────────────────────
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS created_by INT DEFAULT NULL");
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS programme VARCHAR(150) DEFAULT NULL");
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  created_by INT DEFAULT NULL");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  programme VARCHAR(150) DEFAULT NULL");}catch(Exception $e){}
 // Fix existing groups with no programme — assign creator's programme
 $conn->query("UPDATE study_groups g
     JOIN students s ON g.created_by = s.id
     SET g.programme = s.programme
     WHERE (g.programme IS NULL OR g.programme = '') AND g.created_by IS NOT NULL");
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS is_online TINYINT(1) DEFAULT 0");
-$conn->query("ALTER TABLE group_members ADD COLUMN IF NOT EXISTS status ENUM('active','blocked') NOT NULL DEFAULT 'active'");
-$conn->query("CREATE TABLE IF NOT EXISTS group_attendance (
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  is_online TINYINT(1) DEFAULT 0");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE group_members ADD COLUMN  status ENUM('active','blocked') NOT NULL DEFAULT 'active'");}catch(Exception $e){}
+try{$conn->query("CREATE TABLE  group_attendance (
   id INT AUTO_INCREMENT PRIMARY KEY,
   group_id INT NOT NULL,
   student_id INT NOT NULL,
@@ -46,8 +46,8 @@ $conn->query("CREATE TABLE IF NOT EXISTS group_attendance (
   UNIQUE KEY uq_att (group_id, student_id, att_date),
   FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-)");
-$conn->query("CREATE TABLE IF NOT EXISTS chat_messages (
+)");}catch(Exception $e){}
+try{$conn->query("CREATE TABLE  chat_messages (
   id INT AUTO_INCREMENT PRIMARY KEY,
   group_id INT NOT NULL,
   student_id INT NOT NULL,
@@ -55,7 +55,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS chat_messages (
   sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (group_id) REFERENCES study_groups(id) ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-)");
+)");}catch(Exception $e){}
 
 // ── Helper: is current user the admin of a group ─────────────
 function is_grp_admin($conn, $gid, $uid) {

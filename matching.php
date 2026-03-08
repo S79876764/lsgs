@@ -20,16 +20,16 @@ $full_name = htmlspecialchars($user['first_name'].' '.$user['last_name']);
 $msg=''; $msg_type='ok';
 
 // ── Migrations ───────────────────────────────────────────────
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS programme VARCHAR(150) DEFAULT NULL");
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS is_online TINYINT(1) DEFAULT 0");
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  programme VARCHAR(150) DEFAULT NULL");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  is_online TINYINT(1) DEFAULT 0");}catch(Exception $e){}
 // Fix groups with no programme — assign to their creator's programme
 $conn->query("UPDATE study_groups g
     JOIN students s ON g.created_by = s.id
     SET g.programme = s.programme
     WHERE (g.programme IS NULL OR g.programme = '') AND g.created_by IS NOT NULL");
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS created_by INT DEFAULT NULL");
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS is_online TINYINT(1) DEFAULT 0");
-$conn->query("ALTER TABLE group_members ADD COLUMN IF NOT EXISTS status ENUM('active','blocked') NOT NULL DEFAULT 'active'");
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  created_by INT DEFAULT NULL");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE study_groups ADD COLUMN  is_online TINYINT(1) DEFAULT 0");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE group_members ADD COLUMN  status ENUM('active','blocked') NOT NULL DEFAULT 'active'");}catch(Exception $e){}
 
 // Current student's programme
 $my_programme = $user['programme'] ?? '';

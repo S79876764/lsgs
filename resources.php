@@ -13,8 +13,8 @@ $full_name=htmlspecialchars($user['first_name'].' '.$user['last_name']);
 $msg='';$msg_type='ok';
 
 // ── Safe migration ────────────────────────────────────────────
-$conn->query("ALTER TABLE resources ADD COLUMN IF NOT EXISTS file_path VARCHAR(500) DEFAULT NULL");
-$conn->query("ALTER TABLE group_members ADD COLUMN IF NOT EXISTS status ENUM('active','blocked') NOT NULL DEFAULT 'active'");
+try{$conn->query("ALTER TABLE resources ADD COLUMN  file_path VARCHAR(500) DEFAULT NULL");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE group_members ADD COLUMN  status ENUM('active','blocked') NOT NULL DEFAULT 'active'");}catch(Exception $e){}
 
 // ── Upload directory ──────────────────────────────────────────
 $upload_dir = __DIR__ . '/uploads/resources/';
@@ -65,7 +65,7 @@ if(isset($_POST['add_resource'])){
             $file_path = 'uploads/resources/' . $unique;
             $gid_val   = $gid > 0 ? $gid : null;
             // Add file_path column if not exists (safe guard)
-            $conn->query("ALTER TABLE resources ADD COLUMN IF NOT EXISTS file_path VARCHAR(500) DEFAULT NULL");
+            try{$conn->query("ALTER TABLE resources ADD COLUMN  file_path VARCHAR(500) DEFAULT NULL");}catch(Exception $e){}
             $st = $conn->prepare("INSERT INTO resources (name,group_id,student_id,category,file_type,size_label,file_path) VALUES (?,?,?,?,?,?,?)");
             $st->bind_param('siiisss', $display_name, $gid_val, $uid, $cat, $ftype, $size_label, $file_path);
             $st->execute();
