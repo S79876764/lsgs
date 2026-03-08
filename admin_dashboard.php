@@ -19,10 +19,10 @@ require_once __DIR__.'/db.php';
 $admin = $_SESSION['user'];
 
 // ── Safe migrations ───────────────────────────────────────────
-$conn->query("ALTER TABLE group_members ADD COLUMN IF NOT EXISTS status ENUM('active','blocked') NOT NULL DEFAULT 'active'");
-$conn->query("CREATE TABLE IF NOT EXISTS group_attendance (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, student_id INT NOT NULL, att_date DATE NOT NULL, status ENUM('Present','Absent') DEFAULT 'Present', marked_by INT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_att (group_id,student_id,att_date))");
-$conn->query("CREATE TABLE IF NOT EXISTS chat_messages (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, student_id INT NOT NULL, message TEXT NOT NULL, sent_at DATETIME DEFAULT CURRENT_TIMESTAMP)");
-$conn->query("ALTER TABLE resources ADD COLUMN IF NOT EXISTS file_path VARCHAR(500) DEFAULT NULL");
+try{$conn->query("ALTER TABLE group_members ADD COLUMN  status ENUM('active','blocked') NOT NULL DEFAULT 'active'");}catch(Exception $e){}
+try{$conn->query("CREATE TABLE  group_attendance (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, student_id INT NOT NULL, att_date DATE NOT NULL, status ENUM('Present','Absent') DEFAULT 'Present', marked_by INT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_att (group_id,student_id,att_date))");}catch(Exception $e){}
+try{$conn->query("CREATE TABLE  chat_messages (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, student_id INT NOT NULL, message TEXT NOT NULL, sent_at DATETIME DEFAULT CURRENT_TIMESTAMP)");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE resources ADD COLUMN  file_path VARCHAR(500) DEFAULT NULL");}catch(Exception $e){}
 
 // ── Handle POST actions ──────────────────────────────────────
 $msg = '';
@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $loc   = trim($_POST['g_location']    ?? '');
         $online= isset($_POST['g_online']) ? 1 : 0;
         if ($name && $subj) {
-            $conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS is_online TINYINT(1) DEFAULT 0");
+            try{$conn->query("ALTER TABLE study_groups ADD COLUMN  is_online TINYINT(1) DEFAULT 0");}catch(Exception $e){}
             $st = $conn->prepare("UPDATE study_groups SET name=?,subject=?,skill_level=?,days=?,meeting_time=?,location=?,is_online=? WHERE id=?");
             $st->bind_param('ssssssii',$name,$subj,$level,$days,$time,$loc,$online,$id); $st->execute();
             $msg = 'Group updated.';
@@ -994,8 +994,8 @@ $recent_students = array_slice($students, 0, 6);
         <div class="card-title" style="margin-bottom:4px">🔐 Security Question</div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:18px">Set or update your security question for password recovery.</p>
         <?php
-        $conn->query("ALTER TABLE admin ADD COLUMN IF NOT EXISTS security_question VARCHAR(255) DEFAULT NULL");
-        $conn->query("ALTER TABLE admin ADD COLUMN IF NOT EXISTS security_answer VARCHAR(255) DEFAULT NULL");
+        try{$conn->query("ALTER TABLE admin ADD COLUMN  security_question VARCHAR(255) DEFAULT NULL");}catch(Exception $e){}
+        try{$conn->query("ALTER TABLE admin ADD COLUMN  security_answer VARCHAR(255) DEFAULT NULL");}catch(Exception $e){}
         $admin_sq = $conn->query("SELECT security_question FROM admin WHERE id={$admin['id']} LIMIT 1")->fetch_assoc();
         ?>
         <?php if (!empty($admin_sq['security_question'])): ?>
