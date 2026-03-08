@@ -1,37 +1,17 @@
-FROM ubuntu:22.04
+FROM php:8.2-apache
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV APACHE_RUN_USER=www-data
-ENV APACHE_RUN_GROUP=www-data
-ENV APACHE_LOG_DIR=/var/log/apache2
-ENV APACHE_PID_FILE=/var/run/apache2/apache2.pid
-ENV APACHE_RUN_DIR=/var/run/apache2
-ENV APACHE_LOCK_DIR=/var/lock/apache2
+RUN sed -i 's/^#\(.*mpm_prefork\)/\1/' /etc/apache2/mods-enabled/*.load 2>/dev/null || true
+RUN if [ -f /etc/apache2/mods-enabled/mpm_event.load ]; then a2dismod mpm_event; fi
+RUN if [ -f /etc/apache2/mods-enabled/mpm_worker.load ]; then a2dismod mpm_worker; fi
+RUN a2enmod mpm_prefork rewrite
 
-RUN apt-get update && apt-get install -y \
-    apache2 \
-    php8.1 \
-    php8.1-mysqli \
-    php8.1-pdo \
-    php8.1-mysql \
-    libapache2-mod-php8.1 \
-    && a2enmod rewrite php8.1 \
-    && rm -rf /var/lib/apt/lists/*
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
 WORKDIR /var/www/html
-RUN rm -f /var/www/html/index.html
-
 COPY . .
 
-RUN mkdir -p /var/www/html/uploads/resources \
-    && chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/uploads
-
-RUN echo '<Directory /var/www/html>\n\
-    AllowOverride All\n\
-    Require all granted\n\
-</Directory>' >> /etc/apache2/apache2.conf
+RUN mkdir -p uploads/resources \
+    && chown -R www-data:www-data uploads \
+    && chmod -R 755 uploads
 
 EXPOSE 80
-
-CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
