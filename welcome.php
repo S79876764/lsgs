@@ -297,7 +297,7 @@ function selectRole(role) {
 
   // Short delay so user sees the selection highlight, then redirect
   setTimeout(() => {
-    window.location.href = role === 'student' ? 'index.php' : 'admin_login.php';
+    window.location.href = role === 'student' ? 'login.php' : 'admin_login.php';
   }, 280);
 }
 
