@@ -15,3 +15,4 @@ if ($conn->connect_error) {
     die('<p style="font-family:sans-serif;color:red;padding:40px">DB Error: ' . htmlspecialchars($conn->connect_error) . '</p>');
 }
 $conn->set_charset('utf8mb4');
+$conn->query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
