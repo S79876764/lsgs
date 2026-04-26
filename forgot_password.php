@@ -3,6 +3,9 @@
 //  LSGS  |  forgot_password.php — Student Password Reset
 //  Flow: Enter student number → answer security question → new password
 // ============================================================
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.cookie_secure', '1');
+ini_set('session.use_strict_mode', '1');
 session_start();
 if (isset($_SESSION['user'])) { header('Location: dashboard.php'); exit; }
 
@@ -39,6 +42,19 @@ if (isset($_POST['step1'])) {
 if (isset($_POST['step2'])) {
     $answer = strtolower(trim($_POST['security_answer'] ?? ''));
     $rid    = (int)($_SESSION['reset_id'] ?? 0);
+    // Try to recover session from hidden field if session was lost
+    if (!$rid && !empty($_POST['reset_id'])) {
+        $rid = (int)$_POST['reset_id'];
+        $st2 = $conn->prepare("SELECT first_name, security_question FROM students WHERE id=? LIMIT 1");
+        $st2->bind_param('i',$rid); $st2->execute();
+        $row2 = $st2->get_result()->fetch_assoc();
+        if ($row2) {
+            $_SESSION['reset_id']       = $rid;
+            $_SESSION['reset_name']     = $row2['first_name'];
+            $_SESSION['reset_question'] = $row2['security_question'];
+            $_SESSION['reset_attempts'] = 0;
+        }
+    }
     if (!$rid) { $step = 1; $error = 'Session expired. Please start again.'; }
     else {
         $_SESSION['reset_attempts'] = ($_SESSION['reset_attempts'] ?? 0) + 1;
@@ -186,6 +202,7 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:
   <!-- ── STEP 2: Security Question ── -->
   <form method="POST">
     <input type="hidden" name="step2" value="1"/>
+    <input type="hidden" name="reset_id" value="<?= (int)($_SESSION['reset_id'] ?? 0) ?>"/>
     <p style="color:rgba(255,255,255,.6);font-size:13.5px;margin-bottom:14px">
       Hello <strong style="color:#fff"><?= htmlspecialchars($_SESSION['reset_name'] ?? '') ?></strong>, answer your security question to continue.
     </p>
