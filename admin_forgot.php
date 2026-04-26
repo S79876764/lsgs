@@ -7,10 +7,13 @@ if (isset($_SESSION['user'])) { header('Location: admin_dashboard.php'); exit; }
 
 require_once __DIR__.'/db.php';
 
-// Ensure security columns exist
-$conn->query("ALTER TABLE admin ADD COLUMN IF NOT EXISTS session_token VARCHAR(64) DEFAULT NULL");
-$conn->query("ALTER TABLE admin ADD COLUMN IF NOT EXISTS security_question VARCHAR(255) DEFAULT NULL");
-$conn->query("ALTER TABLE admin ADD COLUMN IF NOT EXISTS security_answer VARCHAR(255) DEFAULT NULL");
+// Ensure security columns exist (compatible with MySQL 8)
+$existing = [];
+$res = $conn->query("SHOW COLUMNS FROM admin");
+while ($row = $res->fetch_assoc()) $existing[] = $row['Field'];
+if (!in_array('session_token',    $existing)) $conn->query("ALTER TABLE admin ADD COLUMN session_token VARCHAR(64) DEFAULT NULL");
+if (!in_array('security_question',$existing)) $conn->query("ALTER TABLE admin ADD COLUMN security_question VARCHAR(255) DEFAULT NULL");
+if (!in_array('security_answer',  $existing)) $conn->query("ALTER TABLE admin ADD COLUMN security_answer VARCHAR(255) DEFAULT NULL");
 
 $step  = 1;
 $error = '';
