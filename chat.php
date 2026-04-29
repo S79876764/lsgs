@@ -26,8 +26,11 @@ $conn->query("CREATE TABLE IF NOT EXISTS chat_messages (
   FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
   INDEX idx_group_time (group_id, sent_at)
 )");
-$conn->query("ALTER TABLE study_groups ADD COLUMN IF NOT EXISTS is_online TINYINT(1) DEFAULT 0");
-$conn->query("ALTER TABLE students ADD COLUMN IF NOT EXISTS last_seen DATETIME DEFAULT NULL");
+// Safely add columns — compatible with all MySQL versions
+if ($conn->query("SHOW COLUMNS FROM study_groups LIKE 'is_online'")->num_rows === 0)
+    $conn->query("ALTER TABLE study_groups ADD COLUMN is_online TINYINT(1) DEFAULT 0");
+if ($conn->query("SHOW COLUMNS FROM students LIKE 'last_seen'")->num_rows === 0)
+    $conn->query("ALTER TABLE students ADD COLUMN last_seen DATETIME DEFAULT NULL");
 // Update current user's last_seen
 $conn->query("UPDATE students SET last_seen=NOW() WHERE id=$uid");
 
