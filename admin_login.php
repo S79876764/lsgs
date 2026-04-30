@@ -30,17 +30,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     $st->bind_param('s',$email);$st->execute();
     $admin=$st->get_result()->fetch_assoc();
     if($admin&&password_verify($pw,$admin['password'])){
-        // Block login if another session is already active
-        if (!empty($admin['session_token'])) {
-            $error = 'This admin account is already logged in on another device. Please wait until that session is logged out.';
-        } else {
-            $token = bin2hex(random_bytes(32));
-            $upd = $conn->prepare("UPDATE admin SET session_token=? WHERE id=?");
-            $upd->bind_param('si',$token,$admin['id']); $upd->execute();
-            $_SESSION['user']=['id'=>$admin['id'],'first_name'=>'Admin','last_name'=>'','name'=>$admin['name'],'email'=>$admin['email'],'role'=>'admin','year'=>'','session_token'=>$token];
-            header('Location: admin_dashboard.php');exit;
-        }
-    } elseif (!$error) {
+        $token = bin2hex(random_bytes(32));
+        $upd = $conn->prepare("UPDATE admin SET session_token=?, last_active=NOW() WHERE id=?");
+        $upd->bind_param('si',$token,$admin['id']); $upd->execute();
+        $_SESSION['user']=['id'=>$admin['id'],'first_name'=>'Admin','last_name'=>'','name'=>$admin['name'],'email'=>$admin['email'],'role'=>'admin','year'=>'','session_token'=>$token];
+        header('Location: admin_dashboard.php');exit;
+    } else {
         $error='Incorrect email or password. Please try again.';
     }
 }
