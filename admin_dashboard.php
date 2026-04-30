@@ -91,36 +91,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['delete_student'])) {
-        $id = (int)$_POST['student_id'];
+        $del_id = (int)$_POST['student_id'];
 
-        // Delete physical resource files first
-        $files = $conn->prepare("SELECT file_path FROM resources WHERE student_id=?");
-        $files->bind_param('i',$id); $files->execute();
-        $fres = $files->get_result();
-        while ($frow = $fres->fetch_assoc()) {
-            if (!empty($frow['file_path']) && file_exists(__DIR__.'/'.$frow['file_path'])) {
-                unlink(__DIR__.'/'.$frow['file_path']);
+        // Safety check — must be a valid positive ID
+        if ($del_id <= 0) {
+            $msg = 'Invalid student ID.'; $msg_type = 'err';
+        } else {
+            // Verify student actually exists before doing anything
+            $chk_del = $conn->prepare("SELECT id FROM students WHERE id=? LIMIT 1");
+            $chk_del->bind_param('i', $del_id); $chk_del->execute();
+            if (!$chk_del->get_result()->fetch_assoc()) {
+                $msg = 'Student not found.'; $msg_type = 'err';
+            } else {
+                // Delete physical resource files first
+                $del_files = $conn->prepare("SELECT file_path FROM resources WHERE student_id=?");
+                $del_files->bind_param('i', $del_id); $del_files->execute();
+                $del_fres = $del_files->get_result();
+                while ($del_frow = $del_fres->fetch_assoc()) {
+                    if (!empty($del_frow['file_path']) && file_exists(__DIR__.'/'.$del_frow['file_path'])) {
+                        unlink(__DIR__.'/'.$del_frow['file_path']);
+                    }
+                }
+
+                // Wipe all DB records for THIS student only
+                $del_sqls = [
+                    "DELETE FROM group_attendance WHERE student_id=?",
+                    "DELETE FROM group_attendance WHERE marked_by=?",
+                    "DELETE FROM chat_messages    WHERE student_id=?",
+                    "DELETE FROM attendance       WHERE student_id=?",
+                    "DELETE FROM resources        WHERE student_id=?",
+                    "DELETE FROM group_members    WHERE student_id=?",
+                    "UPDATE study_groups SET created_by=NULL WHERE created_by=?",
+                    "DELETE FROM students         WHERE id=?",
+                ];
+                foreach ($del_sqls as $del_sql) {
+                    $del_st = $conn->prepare($del_sql);
+                    if ($del_st) { $del_st->bind_param('i', $del_id); $del_st->execute(); $del_st->close(); }
+                }
+
+                $msg = 'Student and all associated data have been removed.';
             }
         }
-
-        // Wipe all DB records — order matters (children before parents)
-        $tables = [
-            "DELETE FROM group_attendance  WHERE student_id=?",
-            "DELETE FROM group_attendance  WHERE marked_by=?",
-            "DELETE FROM chat_messages     WHERE student_id=?",
-            "DELETE FROM attendance        WHERE student_id=?",
-            "DELETE FROM resources         WHERE student_id=?",
-            "DELETE FROM group_members     WHERE student_id=?",
-            // Groups this student created — remove created_by so group stays but loses admin
-            "UPDATE study_groups SET created_by=NULL WHERE created_by=?",
-            "DELETE FROM students          WHERE id=?",
-        ];
-        foreach ($tables as $sql) {
-            $st = $conn->prepare($sql);
-            if ($st) { $st->bind_param('i',$id); $st->execute(); }
-        }
-
-        $msg = 'Student and all associated data have been removed.';
     }
 
     // Add Group
