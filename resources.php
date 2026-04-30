@@ -21,14 +21,6 @@ $upload_dir = __DIR__ . '/uploads/resources/';
 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
 // ── Handle file upload ────────────────────────────────────────
-$upload_dir = __DIR__ . '/uploads/resources/';
-if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-
-// ── Upload directory ──────────────────────────────────────────
-$upload_dir = __DIR__ . '/uploads/resources/';
-if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-
-// ── Handle file upload ────────────────────────────────────────
 if(isset($_POST['add_resource'])){
     $gid   = (int)($_POST['group_id'] ?? 0);
     $cat   = trim($_POST['category']  ?? 'Notes');
@@ -36,6 +28,8 @@ if(isset($_POST['add_resource'])){
     // Group required
     if($gid <= 0){
         $msg='Please select a group to share this file with.'; $msg_type='err';
+    } elseif(!array_filter($my_groups, fn($g) => (int)$g['id'] === $gid)){
+        $msg='You are not a member of the selected group.'; $msg_type='err';
     } elseif(empty($_FILES['res_file']['name'])){
         $msg='Please choose a file to upload.'; $msg_type='err';
     } elseif($_FILES['res_file']['error'] !== UPLOAD_ERR_OK){
@@ -52,22 +46,18 @@ if(isset($_POST['add_resource'])){
                      ? round($size_bytes/1048576,1).' MB'
                      : round($size_bytes/1024,0).' KB';
 
-        // Detect file type from extension
         $ftype = in_array($ext,['pdf'])                     ? 'pdf'
                : (in_array($ext,['doc','docx'])             ? 'doc'
                : (in_array($ext,['jpg','jpeg','png','gif','webp']) ? 'img'
                : 'other'));
 
-        // Custom display name (use original filename if no label given)
         $display_name = trim($_POST['res_name'] ?? '') ?: $orig;
 
         if(move_uploaded_file($_FILES['res_file']['tmp_name'], $dest)){
             $file_path = 'uploads/resources/' . $unique;
-            $gid_val   = $gid > 0 ? $gid : null;
-            // Add file_path column if not exists (safe guard)
-            try{$conn->query("ALTER TABLE resources ADD COLUMN  file_path VARCHAR(500) DEFAULT NULL");}catch(Exception $e){}
+            try{$conn->query("ALTER TABLE resources ADD COLUMN file_path VARCHAR(500) DEFAULT NULL");}catch(Exception $e){}
             $st = $conn->prepare("INSERT INTO resources (name,group_id,student_id,category,file_type,size_label,file_path) VALUES (?,?,?,?,?,?,?)");
-            $st->bind_param('siiisss', $display_name, $gid_val, $uid, $cat, $ftype, $size_label, $file_path);
+            $st->bind_param('siissss', $display_name, $gid, $uid, $cat, $ftype, $size_label, $file_path);
             $st->execute();
             $msg = 'File uploaded successfully!';
         } else {
@@ -481,9 +471,22 @@ if(dropZone){
 // ── Progress bar on submit ────────────────────────────────────
 var uploadForm = document.getElementById('upload-form');
 if(uploadForm){
-  uploadForm.addEventListener('submit', function(){
+  uploadForm.addEventListener('submit', function(e){
+    // Validate group selected
+    var grpSel = uploadForm.querySelector('select[name="group_id"]');
+    if(grpSel && (!grpSel.value || grpSel.value === '' || grpSel.value === '0')){
+      e.preventDefault();
+      alert('Please select a group to share this file with.');
+      grpSel.focus();
+      return false;
+    }
+    // Validate file chosen
     var fi = document.getElementById('res_file');
-    if(!fi || !fi.files || !fi.files[0]) return;
+    if(!fi || !fi.files || !fi.files[0]){
+      e.preventDefault();
+      alert('Please choose a file to upload.');
+      return false;
+    }
     document.getElementById('upload-progress').style.display = 'block';
     document.getElementById('upload-btn').disabled    = true;
     document.getElementById('upload-btn').textContent = 'Uploading...';

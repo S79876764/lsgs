@@ -39,21 +39,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $prog   = trim($_POST['programme']   ?? '');
         $year   = trim($_POST['year']        ?? '');
         $pw     = $_POST['password'] ?? 'student123';
+        $phone  = trim($_POST['phone'] ?? '');
         $hash   = password_hash($pw, PASSWORD_DEFAULT);
+        // Safely add phone column if not exists
+        if ($conn->query("SHOW COLUMNS FROM students LIKE 'phone'")->num_rows === 0)
+            $conn->query("ALTER TABLE students ADD COLUMN phone VARCHAR(30) DEFAULT NULL");
         $chk    = $conn->prepare("SELECT id FROM students WHERE LOWER(email)=? LIMIT 1");
         $chk->bind_param('s', $email); $chk->execute();
+        $chk2   = $conn->prepare("SELECT id FROM students WHERE student_num=? LIMIT 1");
+        $chk2->bind_param('s', $stunum); $chk2->execute();
         if ($chk->get_result()->fetch_assoc()) {
             $msg = 'Email already registered.'; $msg_type = 'err';
+        } elseif ($stunum && $chk2->get_result()->fetch_assoc()) {
+            $msg = 'Student number '.htmlspecialchars($stunum).' is already in the database.'; $msg_type = 'err';
         } else {
-            $st = $conn->prepare("INSERT INTO students (first_name,last_name,student_num,email,programme,year,password) VALUES (?,?,?,?,?,?,?)");
-            $st->bind_param('sssssss', $first, $last, $stunum, $email, $prog, $year, $hash);
+            $st = $conn->prepare("INSERT INTO students (first_name,last_name,student_num,email,programme,year,password,phone) VALUES (?,?,?,?,?,?,?,?)");
+            $st->bind_param('ssssssss', $first, $last, $stunum, $email, $prog, $year, $hash, $phone);
             $st->execute();
             $msg = 'Student added successfully.';
         }
     }
 
     // Delete Student — wipe everything related to this student
-    // Edit Student
     if (isset($_POST['edit_student'])) {
         $id   = (int)$_POST['student_id'];
         $fn   = trim($_POST['first_name']  ?? '');
@@ -61,11 +68,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $prog = trim($_POST['programme']   ?? '');
         $yr   = trim($_POST['year']        ?? '');
         $snum = trim($_POST['student_num'] ?? '');
+        $email= trim(strtolower($_POST['email'] ?? ''));
+        $phone= trim($_POST['phone'] ?? '');
         if ($fn && $ln) {
-            $st = $conn->prepare("UPDATE students SET first_name=?,last_name=?,programme=?,year=?,student_num=? WHERE id=?");
-            $st->bind_param('sssssi',$fn,$ln,$prog,$yr,$snum,$id); $st->execute();
+            // Check if student_num already taken by another student
+            if ($snum) {
+                $sc = $conn->prepare("SELECT id FROM students WHERE student_num=? AND id!=? LIMIT 1");
+                $sc->bind_param('si',$snum,$id); $sc->execute();
+                if ($sc->get_result()->fetch_assoc()) {
+                    $msg = 'Student number '.$snum.' is already used by another student.'; $msg_type='err';
+                    goto end_edit_student;
+                }
+            }
+            // Safely add phone column if missing
+            if ($conn->query("SHOW COLUMNS FROM students LIKE 'phone'")->num_rows === 0)
+                $conn->query("ALTER TABLE students ADD COLUMN phone VARCHAR(30) DEFAULT NULL");
+            $st = $conn->prepare("UPDATE students SET first_name=?,last_name=?,programme=?,year=?,student_num=?,email=?,phone=? WHERE id=?");
+            $st->bind_param('sssssssi',$fn,$ln,$prog,$yr,$snum,$email,$phone,$id); $st->execute();
             $msg = 'Student updated.';
         } else { $msg = 'First and last name are required.'; $msg_type='err'; }
+        end_edit_student:;
     }
 
     if (isset($_POST['delete_student'])) {
@@ -1092,17 +1114,20 @@ $recent_students = array_slice($students, 0, 6);
       <div class="modal-title">Add Student</div>
       <button class="modal-close" onclick="closeModal('modal-add-student')">✕</button>
     </div>
-    <form method="POST">
+    <form method="POST" autocomplete="off" onsubmit="return validateAddStudent()">
       <input type="hidden" name="add_student" value="1"/>
+      <!-- hidden dummy fields to trick browser autofill away from real fields -->
+      <input type="text" name="fake_user" style="display:none"/>
+      <input type="password" name="fake_pass" style="display:none"/>
       <div class="fr2">
-        <div class="fg"><label class="fl">First Name *</label><input class="fi" type="text" name="first_name" required/></div>
-        <div class="fg"><label class="fl">Last Name *</label><input class="fi" type="text" name="last_name" required/></div>
+        <div class="fg"><label class="fl">First Name *</label><input class="fi" type="text" id="as-fn" name="first_name" autocomplete="off" required/></div>
+        <div class="fg"><label class="fl">Last Name *</label><input class="fi" type="text" id="as-ln" name="last_name" autocomplete="off" required/></div>
       </div>
-      <div class="fg"><label class="fl">Student Number</label><input class="fi" type="text" name="student_num" placeholder="ECO2024001"/></div>
-      <div class="fg"><label class="fl">Email *</label><input class="fi" type="email" name="email" required/></div>
+      <div class="fg"><label class="fl">Student Number *</label><input class="fi" type="text" id="as-snum" name="student_num" placeholder="ECO2024001" autocomplete="off" required/></div>
+      <div class="fg"><label class="fl">Email *</label><input class="fi" type="email" id="as-email" name="email" autocomplete="off" required/></div>
       <div class="fg">
         <label class="fl">Programme</label>
-        <select class="fs" name="programme">
+        <select class="fs" id="as-prog" name="programme">
           <option value="">Select programme...</option>
           <?php foreach ($programmes as $p): ?>
             <option value="<?= htmlspecialchars($p['name']) ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -1111,16 +1136,17 @@ $recent_students = array_slice($students, 0, 6);
       </div>
       <div class="fg">
         <label class="fl">Year</label>
-        <select class="fs" name="year">
+        <select class="fs" id="as-year" name="year">
           <option value="">Select year...</option>
           <?php foreach (['Year 1','Year 2','Year 3','Year 4','Postgraduate'] as $y): ?>
             <option value="<?=$y?>"><?=$y?></option>
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="fg"><label class="fl">Temp Password</label><input class="fi" type="text" name="password" value="student123"/></div>
+      <div class="fg"><label class="fl">Phone Number</label><input class="fi" type="text" id="as-phone" name="phone" placeholder="+268 7XXXXXXX" autocomplete="off"/></div>
+      <div class="fg"><label class="fl">Temp Password</label><input class="fi" type="text" id="as-pw" name="password" value="student123" autocomplete="off"/></div>
       <div class="form-actions">
-        <button type="button" class="btn btn-ghost" style="flex:1" onclick="closeModal('modal-add-student')">Cancel</button>
+        <button type="button" class="btn btn-ghost" style="flex:1" onclick="resetAddStudentForm();closeModal('modal-add-student')">Cancel</button>
         <button type="submit" class="btn btn-primary" style="flex:2">Add Student</button>
       </div>
     </form>
@@ -1257,6 +1283,7 @@ $recent_students = array_slice($students, 0, 6);
   // ── Modal ──────────────────────────────────────────────────
   function openModal(id) {
     document.getElementById(id).classList.add('open');
+    if (id === 'modal-add-student') resetAddStudentForm();
   }
   function closeModal(id) {
     document.getElementById(id).classList.remove('open');
@@ -1295,25 +1322,34 @@ $recent_students = array_slice($students, 0, 6);
       <div class="modal-title">✏ Edit Student</div>
       <button class="modal-close" onclick="closeModal('modal-edit-student')">✕</button>
     </div>
-    <form method="POST">
+    <form method="POST" autocomplete="off">
       <input type="hidden" name="edit_student" value="1"/>
       <input type="hidden" name="student_id" id="es-id"/>
       <div class="form-grid">
         <div class="fg">
           <label class="fl">First Name</label>
-          <input class="fi" type="text" name="first_name" id="es-fn" required/>
+          <input class="fi" type="text" name="first_name" id="es-fn" autocomplete="off" required/>
         </div>
         <div class="fg">
           <label class="fl">Last Name</label>
-          <input class="fi" type="text" name="last_name" id="es-ln" required/>
+          <input class="fi" type="text" name="last_name" id="es-ln" autocomplete="off" required/>
         </div>
         <div class="fg">
           <label class="fl">Student Number</label>
-          <input class="fi" type="text" name="student_num" id="es-snum"/>
+          <input class="fi" type="text" name="student_num" id="es-snum" autocomplete="off"/>
+        </div>
+        <div class="fg">
+          <label class="fl">Email</label>
+          <input class="fi" type="email" name="email" id="es-email" autocomplete="off"/>
         </div>
         <div class="fg">
           <label class="fl">Programme</label>
-          <input class="fi" type="text" name="programme" id="es-prog"/>
+          <select class="fi" name="programme" id="es-prog">
+            <option value="">— Select —</option>
+            <?php foreach ($programmes as $p): ?>
+              <option value="<?= htmlspecialchars($p['name']) ?>"><?= htmlspecialchars($p['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
         </div>
         <div class="fg">
           <label class="fl">Year</label>
@@ -1321,7 +1357,12 @@ $recent_students = array_slice($students, 0, 6);
             <option value="">— Select —</option>
             <option>Year 1</option><option>Year 2</option>
             <option>Year 3</option><option>Year 4</option>
+            <option>Postgraduate</option>
           </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Phone Number</label>
+          <input class="fi" type="text" name="phone" id="es-phone" autocomplete="off"/>
         </div>
       </div>
       <div class="form-actions">
@@ -1433,16 +1474,40 @@ $recent_students = array_slice($students, 0, 6);
 <script>
 // ── Edit modal openers ────────────────────────────────────────
 function openEditStudent(id, data) {
-  document.getElementById('es-id').value   = id;
-  document.getElementById('es-fn').value   = data.first_name  || '';
-  document.getElementById('es-ln').value   = data.last_name   || '';
-  document.getElementById('es-snum').value = data.student_num || '';
-  document.getElementById('es-prog').value = data.programme   || '';
+  document.getElementById('es-id').value    = id;
+  document.getElementById('es-fn').value    = data.first_name  || '';
+  document.getElementById('es-ln').value    = data.last_name   || '';
+  document.getElementById('es-snum').value  = data.student_num || '';
+  document.getElementById('es-email').value = data.email       || '';
+  document.getElementById('es-phone').value = data.phone       || '';
+  // Programme dropdown
+  var pg = document.getElementById('es-prog');
+  for (var i=0;i<pg.options.length;i++)
+    pg.options[i].selected = (pg.options[i].value === (data.programme||''));
+  // Year dropdown
   var yr = document.getElementById('es-year');
-  for (var i=0;i<yr.options.length;i++) {
+  for (var i=0;i<yr.options.length;i++)
     yr.options[i].selected = (yr.options[i].value === (data.year||''));
-  }
   openModal('modal-edit-student');
+}
+
+function resetAddStudentForm() {
+  ['as-fn','as-ln','as-snum','as-email','as-phone'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var pg = document.getElementById('as-prog');
+  if (pg) pg.selectedIndex = 0;
+  var yr = document.getElementById('as-year');
+  if (yr) yr.selectedIndex = 0;
+  var pw = document.getElementById('as-pw');
+  if (pw) pw.value = 'student123';
+}
+
+function validateAddStudent() {
+  var snum = document.getElementById('as-snum').value.trim();
+  if (!snum) { alert('Student number is required.'); return false; }
+  return true;
 }
 
 function openEditGroup(id, data) {
