@@ -23,6 +23,8 @@ try{$conn->query("ALTER TABLE group_members ADD COLUMN  status ENUM('active','bl
 try{$conn->query("CREATE TABLE  group_attendance (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, student_id INT NOT NULL, att_date DATE NOT NULL, status ENUM('Present','Absent') DEFAULT 'Present', marked_by INT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_att (group_id,student_id,att_date))");}catch(Exception $e){}
 try{$conn->query("CREATE TABLE  chat_messages (id INT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL, student_id INT NOT NULL, message TEXT NOT NULL, sent_at DATETIME DEFAULT CURRENT_TIMESTAMP)");}catch(Exception $e){}
 try{$conn->query("ALTER TABLE resources ADD COLUMN  file_path VARCHAR(500) DEFAULT NULL");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE subjects ADD COLUMN programme VARCHAR(200) DEFAULT NULL");}catch(Exception $e){}
+try{$conn->query("ALTER TABLE subjects ADD COLUMN year VARCHAR(20) DEFAULT NULL");}catch(Exception $e){}
 
 // ── Handle POST actions ──────────────────────────────────────
 $msg = '';
@@ -196,11 +198,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Add Subject
     if (isset($_POST['add_subject'])) {
-        $name = trim($_POST['subject_name'] ?? '');
-        if ($name) {
-            $st = $conn->prepare("INSERT IGNORE INTO subjects (name) VALUES (?)");
-            $st->bind_param('s',$name); $st->execute();
+        $name  = trim($_POST['subject_name'] ?? '');
+        $prog  = trim($_POST['subject_programme'] ?? '');
+        $year  = trim($_POST['subject_year'] ?? '');
+        if ($name && $prog && $year) {
+            $st = $conn->prepare("INSERT INTO subjects (name, programme, year) VALUES (?,?,?)");
+            $st->bind_param('sss', $name, $prog, $year); $st->execute();
             $msg = 'Subject added.';
+        } elseif ($name) {
+            $msg = 'Please select a programme and year for this subject.'; $msg_type = 'err';
         }
     }
 
@@ -336,7 +342,7 @@ while ($row = $r->fetch_assoc()) $groups[] = $row;
 
 // Subjects
 $subjects = [];
-$r = $conn->query("SELECT * FROM subjects ORDER BY name");
+$r = $conn->query("SELECT * FROM subjects ORDER BY programme, year, name");
 while ($row = $r->fetch_assoc()) $subjects[] = $row;
 
 // Programmes
@@ -936,7 +942,12 @@ $recent_students = array_slice($students, 0, 6);
           <?php else: ?>
             <?php foreach ($subjects as $s): ?>
               <div class="list-item">
-                <span><?= htmlspecialchars($s['name']) ?></span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600;font-size:13.5px"><?= htmlspecialchars($s['name']) ?></div>
+                  <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                    <?= htmlspecialchars($s['programme'] ?? '—') ?> &nbsp;·&nbsp; <?= htmlspecialchars($s['year'] ?? '—') ?>
+                  </div>
+                </div>
                 <form method="POST" style="display:inline" onsubmit="return confirm('Remove subject?')">
                   <input type="hidden" name="delete_subject" value="1"/>
                   <input type="hidden" name="subject_id" value="<?= $s['id'] ?>"/>
@@ -1213,7 +1224,28 @@ $recent_students = array_slice($students, 0, 6);
     </div>
     <form method="POST">
       <input type="hidden" name="add_subject" value="1"/>
-      <div class="fg"><label class="fl">Subject Name *</label><input class="fi" type="text" name="subject_name" placeholder="e.g. Accounting" required/></div>
+      <div class="fg">
+        <label class="fl">Programme *</label>
+        <select class="fs" name="subject_programme" required>
+          <option value="">— Select Programme —</option>
+          <?php foreach ($programmes as $p): ?>
+            <option value="<?= htmlspecialchars($p['name']) ?>"><?= htmlspecialchars($p['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Year *</label>
+        <select class="fs" name="subject_year" required>
+          <option value="">— Select Year —</option>
+          <?php foreach (['Year 1','Year 2','Year 3','Year 4','Postgraduate'] as $y): ?>
+            <option value="<?= $y ?>"><?= $y ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Subject Name *</label>
+        <input class="fi" type="text" name="subject_name" placeholder="e.g. Financial Accounting" required/>
+      </div>
       <div class="form-actions">
         <button type="button" class="btn btn-ghost" style="flex:1" onclick="closeModal('modal-add-subject')">Cancel</button>
         <button type="submit" class="btn btn-primary" style="flex:2">Add Subject</button>
