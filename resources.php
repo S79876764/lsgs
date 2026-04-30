@@ -474,14 +474,6 @@ if(dropZone){
 var uploadForm = document.getElementById('upload-form');
 if(uploadForm){
   uploadForm.addEventListener('submit', function(e){
-    // Validate group selected
-    var grpSel = uploadForm.querySelector('select[name="group_id"]');
-    if(grpSel && (!grpSel.value || grpSel.value === '' || grpSel.value === '0')){
-      e.preventDefault();
-      alert('Please select a group to share this file with.');
-      grpSel.focus();
-      return false;
-    }
     // Validate file chosen
     var fi = document.getElementById('res_file');
     if(!fi || !fi.files || !fi.files[0]){
