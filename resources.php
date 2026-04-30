@@ -20,6 +20,12 @@ try{$conn->query("ALTER TABLE group_members ADD COLUMN  status ENUM('active','bl
 $upload_dir = __DIR__ . '/uploads/resources/';
 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
+// ── My groups fetched early so upload handler can validate ───
+$my_groups=[];
+$st=$conn->prepare("SELECT g.id,g.name FROM study_groups g JOIN group_members gm ON g.id=gm.group_id WHERE gm.student_id=? AND gm.status='active' ORDER BY g.name");
+$st->bind_param('i',$uid);$st->execute();$r=$st->get_result();
+while($row=$r->fetch_assoc())$my_groups[]=$row;
+
 // ── Handle file upload ────────────────────────────────────────
 if(isset($_POST['add_resource'])){
     $gid   = (int)($_POST['group_id'] ?? 0);
@@ -93,11 +99,7 @@ $rq->execute();
 $rres=$rq->get_result();
 while($row=$rres->fetch_assoc())$resources[]=$row;
 
-// ── My groups for form dropdown ───────────────────────────────
-$my_groups=[];
-$st=$conn->prepare("SELECT g.id,g.name FROM study_groups g JOIN group_members gm ON g.id=gm.group_id WHERE gm.student_id=? AND gm.status='active' ORDER BY g.name");
-$st->bind_param('i',$uid);$st->execute();$r=$st->get_result();
-while($row=$r->fetch_assoc())$my_groups[]=$row;
+// ── My groups already fetched above ───────────────────────
 
 // Stats — only files in my groups
 $st_t=$conn->prepare("SELECT COUNT(*) c FROM resources r JOIN group_members gm ON r.group_id=gm.group_id WHERE gm.student_id=? AND gm.status='active'");
