@@ -33,9 +33,9 @@ if(isset($_POST['add_resource'])){
 
     // Group required
     if($gid <= 0){
-        $msg='Please select a group to share this file with. (received gid='.$gid.', groups='.count($my_groups).')'; $msg_type='err';
+        $msg='Please select a group to share this file with.'; $msg_type='err';
     } elseif(!array_filter($my_groups, fn($g) => (int)$g['id'] === $gid)){
-        $msg='You are not a member of the selected group. (gid='.$gid.', available='.implode(',',array_column($my_groups,'id')).')'; $msg_type='err';
+        $msg='You are not a member of the selected group.'; $msg_type='err';
     } elseif(empty($_FILES['res_file']['name'])){
         $msg='Please choose a file to upload.'; $msg_type='err';
     } elseif($_FILES['res_file']['error'] !== UPLOAD_ERR_OK){
@@ -333,7 +333,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text
           <div style="padding:11px 14px;background:#fff8e1;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#92400e">
             ⚠ You are not in any group yet. <a href="groups.php" style="color:var(--blue);font-weight:600">Join or create a group first.</a>
           </div>
-          <input type="hidden" name="group_id" value="0"/>
         <?php else:?>
         <select class="fs" name="group_id" required>
           <option value="">— Select a group —</option>
