@@ -33,9 +33,9 @@ if(isset($_POST['add_resource'])){
 
     // Group required
     if($gid <= 0){
-        $msg='Please select a group to share this file with.'; $msg_type='err';
+        $msg='Please select a group to share this file with. (received gid='.$gid.', groups='.count($my_groups).')'; $msg_type='err';
     } elseif(!array_filter($my_groups, fn($g) => (int)$g['id'] === $gid)){
-        $msg='You are not a member of the selected group.'; $msg_type='err';
+        $msg='You are not a member of the selected group. (gid='.$gid.', available='.implode(',',array_column($my_groups,'id')).')'; $msg_type='err';
     } elseif(empty($_FILES['res_file']['name'])){
         $msg='Please choose a file to upload.'; $msg_type='err';
     } elseif($_FILES['res_file']['error'] !== UPLOAD_ERR_OK){
