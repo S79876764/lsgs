@@ -1160,7 +1160,7 @@ $recent_students = array_slice($students, 0, 6);
         <label class="fl">Year</label>
         <select class="fs" id="as-year" name="year">
           <option value="">Select year...</option>
-          <?php foreach (['Year 1','Year 2','Year 3','Year 4','Postgraduate'] as $y): ?>
+          <?php foreach (['Year 1','Year 2','Year 3'] as $y): ?>
             <option value="<?=$y?>"><?=$y?></option>
           <?php endforeach; ?>
         </select>
@@ -1237,7 +1237,7 @@ $recent_students = array_slice($students, 0, 6);
         <label class="fl">Year *</label>
         <select class="fs" name="subject_year" required>
           <option value="">— Select Year —</option>
-          <?php foreach (['Year 1','Year 2','Year 3','Year 4','Postgraduate'] as $y): ?>
+          <?php foreach (['Year 1','Year 2','Year 3'] as $y): ?>
             <option value="<?= $y ?>"><?= $y ?></option>
           <?php endforeach; ?>
         </select>
@@ -1399,8 +1399,7 @@ $recent_students = array_slice($students, 0, 6);
           <select class="fi" name="year" id="es-year">
             <option value="">— Select —</option>
             <option>Year 1</option><option>Year 2</option>
-            <option>Year 3</option><option>Year 4</option>
-            <option>Postgraduate</option>
+            <option>Year 3</option>
           </select>
         </div>
         <div class="fg">
